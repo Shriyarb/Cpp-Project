@@ -1,0 +1,235 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+string toLowerCase(const string& str) {
+    string lowerStr = str;
+    transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+    return lowerStr;
+}
+
+class Movie {
+public:
+    string name;
+    Movie(const string& name) : name(name) {}
+    static bool isMovieAvailable(const vector<Movie>& movies, const string& movieName) {
+        string lowerMovieName = toLowerCase(movieName);
+        for (const auto& movie : movies) {
+            if (toLowerCase(movie.name) == lowerMovieName) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+class Ticket {
+protected:
+    int ticketPrice;
+    int maxSeats;
+public:
+    virtual int calculateCost(int numTickets) const = 0;
+    int getMaxSeats() const { return maxSeats; }
+    virtual ~Ticket() {}
+};
+
+class PlatinumTicket : public Ticket {
+public:
+    PlatinumTicket() { ticketPrice = 275; maxSeats = 15; }
+    int calculateCost(int numTickets) const override { return ticketPrice * numTickets; }
+};
+
+class GoldTicket : public Ticket {
+public:
+    GoldTicket() { ticketPrice = 195; maxSeats = 16; }
+    int calculateCost(int numTickets) const override { return ticketPrice * numTickets; }
+};
+
+template <typename T>
+void displayOptions(const vector<T>& options) {
+    for (size_t i = 0; i < options.size(); ++i) {
+        cout << i + 1 << ". " << options[i] << endl;
+    }
+}
+
+struct Booking {
+    string date;
+    string theater;
+    string timing;
+    string movie;
+    set<string> bookedSeats;
+};
+
+vector<Booking> bookings;
+
+Booking* findBooking(const string& date, const string& theater, const string& timing, const string& movie) {
+    for (auto& booking : bookings) {
+        if (booking.date == date && booking.theater == theater && booking.timing == timing && booking.movie == movie) {
+            return &booking;
+        }
+    }
+    return nullptr;
+}
+
+int main() {
+    vector<Movie> movies = {Movie("Lucky Baskar"), Movie("Amaran"), Movie("Ka")};
+    vector<string> theaters = {"Mythri Cinemas", "Plateno Cinemas", "Cine Square"};
+    vector<string> timings = {"10:00 AM", "2:00 PM", "6:00 PM", "9:00 PM"};
+
+    while (true) {
+        cout << "\n** Movie Tickets **" << endl;
+        cout << "Press 1 to check available movies." << endl;
+        cout << "Press 2 to check upcoming movies." << endl;
+        cout << "Press 3 to exit." << endl;
+        int choice;
+        cout << "Enter your choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        if (choice == 1) {
+            cout << "Available Movies:\n";
+            for (const auto& movie : movies) cout << "- " << movie.name << endl;
+
+            cout << "\nEnter the movie name you want to book: ";
+            string movieName;
+            getline(cin, movieName);
+
+            if (Movie::isMovieAvailable(movies, movieName)) {
+                cout << "Enter the date (18 to 24 November): ";
+                int date;
+                cin >> date;
+                if (date < 18 || date > 24) {
+                    cout << "Invalid date!" << endl;
+                    continue;
+                }
+                string dateStr = to_string(date);
+
+                cout << "\nSelect a theater:\n";
+                displayOptions(theaters);
+                int theaterChoice;
+                cin >> theaterChoice;
+                if (theaterChoice < 1 || theaterChoice > theaters.size()) {
+                    cout << "Invalid theater choice!" << endl;
+                    continue;
+                }
+                string selectedTheater = theaters[theaterChoice - 1];
+
+                cout << "\nAvailable show timings:\n";
+                displayOptions(timings);
+                int timingChoice;
+                cin >> timingChoice;
+                if (timingChoice < 1 || timingChoice > timings.size()) {
+                    cout << "Invalid timing choice!" << endl;
+                    continue;
+                }
+                string selectedTiming = timings[timingChoice - 1];
+
+                cout << "\nChoose class (Platinum/Gold): ";
+                string seatClass;
+                cin >> seatClass;
+
+                Ticket* ticket;
+                string selectedRow;
+                if (toLowerCase(seatClass) == "platinum") {
+                    ticket = new PlatinumTicket();
+                    selectedRow = "A";
+                } else if (toLowerCase(seatClass) == "gold") {
+                    ticket = new GoldTicket();
+                    vector<string> rows = {"B", "C", "D", "E", "F", "G", "H", "I", "J", "K"};
+                    while (true) {
+                        cout << "\nSelect a row (By entering the number):\n";
+                        displayOptions(rows);
+                        int rowChoice;
+                        cin >> rowChoice;
+                        if (rowChoice < 1 || rowChoice > rows.size()) {
+                            cout << "Invalid row choice! Try again." << endl;
+                            continue;
+                        }
+                        selectedRow = rows[rowChoice - 1];
+
+                        if (selectedRow == "I" || selectedRow == "J" || selectedRow == "K") {
+                            cout << "Disclaimer: This row is very near to the screen. Proceed? (yes/no): ";
+                            string proceed;
+                            cin >> proceed;
+                            if (toLowerCase(proceed) != "yes") {
+                                cout << "Please select a different row.\n";
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+                } else {
+                    cout << "Invalid class!" << endl;
+                    continue;
+                }
+
+                int startSeat, endSeat;
+                while (true) {
+                    cout << "Enter the seat number or range (e.g., 4 for a single seat or 4 10 for a range): ";
+                    cin >> startSeat;
+                    if (cin.peek() == '\n') {
+                        endSeat = startSeat;
+                    } else {
+                        cin >> endSeat;
+                    }
+
+                    if (startSeat < 1 || endSeat > ticket->getMaxSeats() || startSeat > endSeat) {
+                        cout << "Invalid seat range! Please enter a valid range within 1 to " << ticket->getMaxSeats() << "." << endl;
+                        continue;
+                    }
+
+                    Booking* existingBooking = findBooking(dateStr, selectedTheater, selectedTiming, movieName);
+
+                    if (!existingBooking) {
+                        bookings.push_back({dateStr, selectedTheater, selectedTiming, movieName, {}});
+                        existingBooking = &bookings.back();
+                    }
+
+                    bool seatsAvailable = true;
+                    for (int seat = startSeat; seat <= endSeat; ++seat) {
+                        string seatId = selectedRow + to_string(seat);
+                        if (existingBooking->bookedSeats.count(seatId)) {
+                            seatsAvailable = false;
+                            break;
+                        }
+                    }
+
+                    if (!seatsAvailable) {
+                        cout << "Some seats in the range are already booked for this date, theater, and timing. Please try another range." << endl;
+                        continue;
+                    }
+
+                    for (int seat = startSeat; seat <= endSeat; ++seat) {
+                        existingBooking->bookedSeats.insert(selectedRow + to_string(seat));
+                    }
+                    break;
+                }
+
+                int numTickets = endSeat - startSeat + 1;
+                int totalCost = ticket->calculateCost(numTickets);
+                cout << "\nBooking Summary:\n";
+                cout << "Movie: " << movieName << endl;
+                cout << "Date: " << date << " November" << endl;
+                cout << "Theater: " << selectedTheater << endl;
+                cout << "Timing: " << selectedTiming << endl;
+                cout << "Class: " << seatClass << endl;
+                cout << "Row: " << selectedRow << endl;
+                cout << "Seats: " << startSeat;
+                if (startSeat != endSeat) cout << " to " << endSeat;
+                cout << endl;
+                cout << "Total Cost: " << totalCost << " rupees" << endl;
+
+                delete ticket;
+            } else {
+                cout << "Movie not found!" << endl;
+            }
+        } else if (choice == 2) {
+            cout << "Upcoming Movies:\n";
+            cout << "1. Pushpa - 5, Dec 2024\n2. Mufasa - 20, Dec 2024\n3. Game Changer - 10, Jan 2025\n" << endl;
+        } else if (choice == 3) {
+            break;
+        } else {
+            cout << "Invalid choice!" << endl;
+        }
+    }
+    return 0;
+}
